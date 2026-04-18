@@ -107,7 +107,7 @@ export function TodoApp() {
         />
       </div>
 
-      <main className="flex-1 min-w-0 w-full max-w-3xl mx-auto px-6 py-6">
+      <main className="flex-1 min-w-0 w-full max-w-4xl mx-auto px-6 py-6">
         <TaskProvider key={activeId} repo={repo} workspaceId={activeId}>
           <Tabs defaultSelectedKey="list">
             <header className="flex items-center justify-between mb-2">

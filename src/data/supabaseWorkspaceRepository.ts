@@ -19,9 +19,10 @@ export async function fetchWorkspaces(): Promise<Workspace[]> {
 }
 
 export async function createSupabaseWorkspace(name: string): Promise<Workspace> {
+  const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from("workspaces")
-    .insert({ name: name.trim() })
+    .insert({ name: name.trim(), user_id: user?.id })
     .select()
     .single();
   if (error) throw error;

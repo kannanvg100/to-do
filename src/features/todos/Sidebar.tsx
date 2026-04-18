@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Workspace } from "../../data/workspaceRepository";
 import { PencilIcon, TrashIcon } from "../../assets/icons";
+import { useAuth } from "../auth/AuthContext";
 
 function WorkspaceItem({
   workspace,
@@ -96,6 +97,7 @@ export function Sidebar({
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const { user, signOut } = useAuth();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
 
@@ -107,11 +109,11 @@ export function Sidebar({
   };
 
   return (
-    <aside className="flex w-52 shrink-0 flex-col gap-2 border-r border-zinc-200 pr-2">
+    <aside className="flex h-full w-52 shrink-0 flex-col gap-2 border-r border-zinc-200 pr-2">
       <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">
         Workspaces
       </p>
-      <ul className="flex flex-col gap-0.5">
+      <ul className="flex flex-col gap-1">
         {workspaces.map((ws) => (
           <WorkspaceItem
             key={ws.id}
@@ -147,9 +149,19 @@ export function Sidebar({
           className="mx-2 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
         >
           <span className="text-base leading-none">+</span>
-          New workspace
+          New
         </button>
       )}
+      <div className="mt-auto border-t border-zinc-200 pt-3 px-2">
+        <p className="truncate text-xs text-zinc-400 mb-1.5">{user?.email}</p>
+        <button
+          type="button"
+          onClick={signOut}
+          className="w-full rounded-md py-1.5 text-left text-sm text-zinc-500"
+        >
+          Sign out
+        </button>
+      </div>
     </aside>
   );
 }
