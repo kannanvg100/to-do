@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -19,22 +19,31 @@ import {
   CheckboxControl,
   CheckboxIndicator,
   CheckboxRoot,
-  Input,
+  InputGroup,
+  TextField,
 } from "@heroui/react";
 import {
   ChevronRightIcon,
   DragHandleIcon,
   PencilIcon,
+  SpinnerIcon,
   TrashIcon,
 } from "../../assets/icons";
 import type { Task } from "../../types/task";
 import { useTasks } from "./useTasks";
 
-function DeleteButton({ onDelete }: { onDelete: () => void }) {
+function DeleteButton({
+  onDelete,
+  isDisabled = false,
+}: {
+  onDelete: () => void;
+  isDisabled?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onDelete}
+      disabled={isDisabled}
       aria-label="Delete task"
       className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 opacity-0 pointer-events-none transition-[opacity,color,background-color] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-zinc-100 hover:text-red-500 dark:hover:bg-zinc-800 dark:hover:text-red-400"
     >
@@ -48,11 +57,13 @@ function SortableItem({
   onToggle,
   onDelete,
   onRename,
+  isPending,
 }: {
   task: Task;
   onToggle: (id: string, completed: boolean) => void;
   onDelete: (id: string) => void;
-  onRename: (id: string, title: string) => void;
+  onRename: (id: string, title: string) => Promise<void> | void;
+  isPending: boolean;
 }) {
   const {
     attributes,
@@ -61,15 +72,19 @@ function SortableItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id });
+  } = useSortable({ id: task.id, disabled: isPending });
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(task.title);
 
-  const commit = () => {
+  const commit = async () => {
     const t = draft.trim();
-    if (t && t !== task.title) onRename(task.id, t);
-    else setDraft(task.title);
+    if (t && t !== task.title) {
+      setEditing(false);
+      await onRename(task.id, t);
+      return;
+    }
+    setDraft(task.title);
     setEditing(false);
   };
 
@@ -83,17 +98,22 @@ function SortableItem({
     <li
       ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-2 px-1 rounded-lg"
+      className={`group flex items-center gap-2 px-1 rounded-lg ${
+        isPending ? "opacity-70" : ""
+      }`}
     >
       <span
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing touch-none"
+        className={`touch-none ${
+          isPending ? "cursor-progress" : "cursor-grab active:cursor-grabbing"
+        }`}
       >
         <DragHandleIcon className="text-zinc-300 dark:text-zinc-600 shrink-0" />
       </span>
       <CheckboxRoot
         isSelected={task.completed}
+        isDisabled={isPending}
         onChange={(v) => onToggle(task.id, v)}
       >
         <CheckboxControl>
@@ -104,28 +124,42 @@ function SortableItem({
         <input
           autoFocus
           value={draft}
+          disabled={isPending}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
+          onBlur={() => void commit()}
           onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-            if (e.key === "Escape") { setDraft(task.title); setEditing(false); }
+            if (e.key === "Enter") void commit();
+            if (e.key === "Escape") {
+              setDraft(task.title);
+              setEditing(false);
+            }
           }}
           className="flex-1 rounded px-1 py-0.5 text-sm text-zinc-900 outline outline-zinc-300 focus:outline-blue-500"
         />
       ) : (
-        <span className={`flex-1 text-sm ${task.completed ? "text-zinc-400 line-through" : "text-zinc-900"}`}>
+        <span
+          className={`flex-1 text-sm ${task.completed ? "text-zinc-400 line-through" : "text-zinc-900"}`}
+        >
           {task.title}
         </span>
       )}
       <button
         type="button"
         aria-label="Edit task"
-        onClick={() => { setDraft(task.title); setEditing(true); }}
+        disabled={isPending}
+        onClick={() => {
+          setDraft(task.title);
+          setEditing(true);
+        }}
         className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 opacity-0 pointer-events-none transition-[opacity,color,background-color] group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto hover:bg-zinc-100 hover:text-zinc-700"
       >
-        <PencilIcon aria-hidden="true" />
+        {isPending ? (
+          <SpinnerIcon aria-hidden="true" className="h-4 w-4 animate-spin" />
+        ) : (
+          <PencilIcon aria-hidden="true" />
+        )}
       </button>
-      <DeleteButton onDelete={() => onDelete(task.id)} />
+      <DeleteButton onDelete={() => onDelete(task.id)} isDisabled={isPending} />
     </li>
   );
 }
@@ -152,8 +186,13 @@ function saveOrder(workspaceId: string, ids: string[]): void {
 export function TodoList({ workspaceId }: { workspaceId: string }) {
   const { tasks, createTask, updateTask, deleteTask } = useTasks();
   const [title, setTitle] = useState("");
-  const [orderedIds, setOrderedIds] = useState<string[]>(() => loadOrder(workspaceId));
+  const [orderedIds, setOrderedIds] = useState<string[]>(() =>
+    loadOrder(workspaceId),
+  );
   const [completedOpen, setCompletedOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [pendingTaskIds, setPendingTaskIds] = useState<string[]>([]);
+  const createInputRef = useRef<HTMLInputElement>(null);
 
   const taskMap = useMemo(
     () => new Map(tasks.map((task) => [task.id, task])),
@@ -176,16 +215,36 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
 
   const sensors = useSensors(useSensor(PointerSensor));
 
+  const withPendingTask = async (
+    taskId: string,
+    action: () => Promise<void>,
+  ) => {
+    setPendingTaskIds((ids) => (ids.includes(taskId) ? ids : [...ids, taskId]));
+    try {
+      await action();
+    } finally {
+      setPendingTaskIds((ids) => ids.filter((id) => id !== taskId));
+    }
+  };
+
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
+    if (e.key !== "Enter" || isCreating) return;
     const t = title.trim();
     if (!t) return;
-    await createTask({
-      title: t,
-      dueDate: new Date().toISOString().slice(0, 10),
-      recurrence: null,
-    });
-    setTitle("");
+    setIsCreating(true);
+    try {
+      await createTask({
+        title: t,
+        dueDate: new Date().toISOString().slice(0, 10),
+        recurrence: null,
+      });
+      setTitle("");
+    } finally {
+      setIsCreating(false);
+      requestAnimationFrame(() => {
+        createInputRef.current?.focus();
+      });
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -220,16 +279,34 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      <Input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Add a task"
-        variant="secondary"
-      />
+      <div className="relative w-full">
+        <TextField name="price" variant="secondary">
+          <InputGroup>
+            <InputGroup.Input
+              ref={createInputRef}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Add a task"
+              disabled={isCreating}
+              className={isCreating ? "pr-9" : undefined}
+            />
+            <InputGroup.Suffix>
+              {isCreating && (
+                <SpinnerIcon
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 animate-spin text-zinc-400"
+                />
+              )}
+            </InputGroup.Suffix>
+          </InputGroup>
+        </TextField>
+      </div>
 
       {active.length === 0 && completed.length === 0 && (
-        <p className="text-sm text-zinc-400">No tasks yet. Type above and press Enter to add one.</p>
+        <p className="text-sm text-zinc-400">
+          No tasks yet. Type above and press Enter to add one.
+        </p>
       )}
 
       {active.length > 0 && (
@@ -247,9 +324,16 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
                 <SortableItem
                   key={task.id}
                   task={task}
-                  onToggle={(id, v) => void updateTask(id, { completed: v })}
+                  onToggle={(id, v) =>
+                    void withPendingTask(id, () =>
+                      updateTask(id, { completed: v }),
+                    )
+                  }
                   onDelete={(id) => void deleteTask(id)}
-                  onRename={(id, t) => void updateTask(id, { title: t })}
+                  onRename={(id, t) =>
+                    withPendingTask(id, () => updateTask(id, { title: t }))
+                  }
+                  isPending={pendingTaskIds.includes(task.id)}
                 />
               ))}
             </ul>
@@ -275,12 +359,19 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
               {completed.map((task) => (
                 <li
                   key={task.id}
-                  className="group flex items-center gap-2 px-1"
+                  className={`group flex items-center gap-2 px-1 ${
+                    pendingTaskIds.includes(task.id) ? "opacity-70" : ""
+                  }`}
                 >
                   <span className="w-4 shrink-0" />
                   <CheckboxRoot
                     isSelected={task.completed}
-                    onChange={(v) => void updateTask(task.id, { completed: v })}
+                    isDisabled={pendingTaskIds.includes(task.id)}
+                    onChange={(v) =>
+                      void withPendingTask(task.id, () =>
+                        updateTask(task.id, { completed: v }),
+                      )
+                    }
                   >
                     <CheckboxControl>
                       <CheckboxIndicator />
@@ -289,7 +380,14 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
                       {task.title}
                     </CheckboxContent>
                   </CheckboxRoot>
-                  <DeleteButton onDelete={() => void deleteTask(task.id)} />
+                  {pendingTaskIds.includes(task.id) ? (
+                    <SpinnerIcon
+                      aria-hidden="true"
+                      className="ml-auto h-4 w-4 shrink-0 animate-spin text-zinc-400"
+                    />
+                  ) : (
+                    <DeleteButton onDelete={() => void deleteTask(task.id)} />
+                  )}
                 </li>
               ))}
             </ul>

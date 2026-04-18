@@ -13,6 +13,11 @@ body {
   min-height: 100vh;
 }
 
-.app-shell :where(button, input, textarea, select, [role="button"], [role="tab"]) {
+.app-shell
+  :where(button, input, textarea, select, [role="button"], [role="tab"]) {
   box-shadow: none !important;
+}
+
+button {
+  cursor: pointer;
 }

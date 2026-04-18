@@ -93,7 +93,7 @@ export function TodoApp() {
 
       {/* Sidebar drawer */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-56 bg-white border-r border-zinc-200 p-4 transition-transform duration-200 ${
+        className={`fixed inset-y-0 left-0 z-30 w-56 bg-white border-r border-zinc-200 p-2 transition-transform duration-200 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -107,7 +107,7 @@ export function TodoApp() {
         />
       </div>
 
-      <main className="flex-1 min-w-0 w-full max-w-4xl mx-auto px-6 py-6">
+      <main className="flex-1 min-w-0 w-full max-w-4xl mx-auto p-3 lg:p-6">
         <TaskProvider key={activeId} repo={repo} workspaceId={activeId}>
           <Tabs defaultSelectedKey="list">
             <header className="flex items-center justify-between mb-2">

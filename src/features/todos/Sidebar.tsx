@@ -19,6 +19,7 @@ function WorkspaceItem({
   canDelete: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState(false);
   const [draft, setDraft] = useState(workspace.name);
 
   const commit = () => {
@@ -28,8 +29,16 @@ function WorkspaceItem({
     setEditing(false);
   };
 
+  const handleClick = () => {
+    onSelect();
+    setSelected((s) => !s);
+  };
+
   return (
-    <li className="group flex items-center gap-1 rounded-lg px-2">
+    <li
+      className="relative flex items-center gap-1 rounded-lg px-2"
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setSelected(false); }}
+    >
       {editing ? (
         <input
           autoFocus
@@ -45,7 +54,7 @@ function WorkspaceItem({
       ) : (
         <button
           type="button"
-          onClick={onSelect}
+          onClick={handleClick}
           className={`flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
             isActive
               ? "bg-zinc-200 font-medium text-zinc-900"
@@ -56,12 +65,12 @@ function WorkspaceItem({
         </button>
       )}
 
-      {!editing && (
-        <div className="flex shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
+      {!editing && selected && (
+        <div className="flex shrink-0">
           <button
             type="button"
             aria-label="Rename workspace"
-            onClick={() => { setDraft(workspace.name); setEditing(true); }}
+            onClick={() => { setDraft(workspace.name); setEditing(true); setSelected(false); }}
             className="inline-flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
           >
             <PencilIcon />
@@ -109,7 +118,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="flex h-full w-52 shrink-0 flex-col gap-2 border-r border-zinc-200 pr-2">
+    <aside className="flex h-full w-52 shrink-0 flex-col gap-2 pr-1">
       <p className="px-2 pt-1 text-xs font-semibold uppercase tracking-wider text-zinc-400">
         Workspaces
       </p>

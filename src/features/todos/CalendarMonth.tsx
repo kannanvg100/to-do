@@ -20,7 +20,7 @@ import {
 } from "date-fns";
 import { useMemo, useState } from "react";
 import { Button } from "@heroui/react";
-import { ChevronRightIcon } from "../../assets/icons";
+import { ChevronRightIcon, SpinnerIcon } from "../../assets/icons";
 import {
   calendarDeltaNewDueDate,
   expandTasksForRange,
@@ -31,11 +31,18 @@ import { useTasks } from "./useTasks";
 
 const WEEK_STARTS_ON = 1 as const;
 
-function DraggableTaskChip({ item }: { item: CalendarTaskItem }) {
+function DraggableTaskChip({
+  item,
+  isPending,
+}: {
+  item: CalendarTaskItem;
+  isPending: boolean;
+}) {
   const dragId = `drag-${item.task.id}-${item.occurrenceDate}`;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: dragId,
+      disabled: isPending,
       data: {
         taskId: item.task.id,
         occurrenceDate: item.occurrenceDate,
@@ -53,12 +60,17 @@ function DraggableTaskChip({ item }: { item: CalendarTaskItem }) {
       style={style}
       {...listeners}
       {...attributes}
-      className={`cursor-grab touch-none rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-xs active:cursor-grabbing dark:border-zinc-600 dark:bg-zinc-800 ${
+      className={`flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-xs touch-none dark:border-zinc-600 dark:bg-zinc-800 ${
+        isPending ? "cursor-progress opacity-70" : "cursor-grab active:cursor-grabbing"
+      } ${
         task.completed ? "text-zinc-400 line-through opacity-70" : "text-zinc-800 dark:text-zinc-100"
       } ${isDragging ? "opacity-50" : ""}`}
       title="Drag to another day"
     >
-      {task.title}
+      <span>{task.title}</span>
+      {isPending && (
+        <SpinnerIcon aria-hidden="true" className="h-3 w-3 shrink-0 animate-spin" />
+      )}
     </div>
   );
 }
@@ -68,11 +80,13 @@ function DayDropCell({
   day,
   inMonth,
   items,
+  pendingTaskIds,
 }: {
   dateKey: string;
   day: Date;
   inMonth: boolean;
   items: CalendarTaskItem[];
+  pendingTaskIds: string[];
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dateKey });
 
@@ -96,7 +110,11 @@ function DayDropCell({
       </span>
       <div className="flex flex-col gap-1">
         {items.map((item) => (
-          <DraggableTaskChip key={`${item.task.id}-${item.occurrenceDate}`} item={item} />
+          <DraggableTaskChip
+            key={`${item.task.id}-${item.occurrenceDate}`}
+            item={item}
+            isPending={pendingTaskIds.includes(item.task.id)}
+          />
         ))}
       </div>
     </div>
@@ -106,6 +124,7 @@ function DayDropCell({
 export function CalendarMonth() {
   const { tasks, updateTask } = useTasks();
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
+  const [pendingTaskIds, setPendingTaskIds] = useState<string[]>([]);
 
   const { gridStart, gridEnd, byDate } = useMemo(() => {
     const monthStart = startOfMonth(cursor);
@@ -127,6 +146,18 @@ export function CalendarMonth() {
     })
   );
 
+  const withPendingTask = async (
+    taskId: string,
+    action: () => Promise<void>,
+  ) => {
+    setPendingTaskIds((ids) => (ids.includes(taskId) ? ids : [...ids, taskId]));
+    try {
+      await action();
+    } finally {
+      setPendingTaskIds((ids) => ids.filter((id) => id !== taskId));
+    }
+  };
+
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     if (!over) return;
@@ -137,7 +168,7 @@ export function CalendarMonth() {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
     const nextDue = calendarDeltaNewDueDate(task, occurrenceDate, targetKey);
-    void updateTask(taskId, { dueDate: nextDue });
+    void withPendingTask(taskId, () => updateTask(taskId, { dueDate: nextDue }));
   };
 
   const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -197,6 +228,7 @@ export function CalendarMonth() {
                   day={day}
                   inMonth={inMonth}
                   items={items}
+                  pendingTaskIds={pendingTaskIds}
                 />
               );
             })}
