@@ -1,0 +1,18 @@
+{
+  "name": "To-Do",
+  "short_name": "To-Do",
+  "description": "A task and calendar app with workspace support.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#863bff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
