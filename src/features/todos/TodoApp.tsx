@@ -13,18 +13,19 @@ import { CalendarMonth } from "./CalendarMonth";
 import { Sidebar } from "./Sidebar";
 import { TaskProvider } from "./TaskProvider";
 import { TodoList } from "./TodoList";
-import { Tabs } from "@heroui/react";
+
+type View = "list" | "calendar";
 
 export function TodoApp() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [view, setView] = useState<View>("list");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchWorkspaces().then((ws) => {
       if (ws.length === 0) {
-        // Create default workspace if none exist
         createSupabaseWorkspace("My Tasks").then((created) => {
           setWorkspaces([created]);
           setActiveId(created.id);
@@ -35,7 +36,8 @@ export function TodoApp() {
       }
       setWorkspaces(ws);
       const savedId = readActiveWorkspaceId();
-      const resolved = (savedId && ws.find((w) => w.id === savedId)) ? savedId : ws[0]!.id;
+      const resolved =
+        savedId && ws.find((w) => w.id === savedId) ? savedId : ws[0]!.id;
       setActiveId(resolved);
       writeActiveWorkspaceId(resolved);
       setLoading(false);
@@ -75,27 +77,52 @@ export function TodoApp() {
 
   if (loading || !repo || !activeWorkspace) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-zinc-400">
-        Loading…
+      <div
+        style={{
+          display: "flex",
+          minHeight: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "Caveat, cursive",
+          fontSize: 28,
+          color: "var(--ink-soft)",
+        }}
+      >
+        loading…
       </div>
     );
   }
 
   return (
-    <div className="app-shell flex min-h-screen w-full">
-      {/* Overlay */}
+    <>
+      {/* Sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/20"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 20,
+            background: "rgba(0,0,0,0.2)",
+          }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar drawer */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-56 bg-white border-r border-zinc-200 p-2 transition-transform duration-200 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          zIndex: 30,
+          width: 224,
+          background: "white",
+          borderRight: "1px solid #E5E7EB",
+          padding: 8,
+          transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 200ms",
+        }}
       >
         <Sidebar
           workspaces={workspaces}
@@ -107,48 +134,85 @@ export function TodoApp() {
         />
       </div>
 
-      <main className="flex-1 min-w-0 w-full max-w-4xl mx-auto p-3 lg:p-6">
-        <TaskProvider key={activeId} repo={repo} workspaceId={activeId}>
-          <Tabs defaultSelectedKey="list">
-            <header className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  aria-label="Toggle sidebar"
-                  onClick={() => setSidebarOpen((o) => !o)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
-                >
-                  <HamburgerIcon />
-                </button>
-                <h1 className="text-xl font-medium tracking-tight text-zinc-900 truncate">
-                  {activeWorkspace.name}
-                </h1>
-              </div>
-              <Tabs.ListContainer>
-                <Tabs.List aria-label="Task views">
-                  <Tabs.Tab id="list">
-                    List
-                    <Tabs.Indicator />
-                  </Tabs.Tab>
-                  <Tabs.Tab id="calendar">
-                    Calendar
-                    <Tabs.Indicator />
-                  </Tabs.Tab>
-                </Tabs.List>
-              </Tabs.ListContainer>
-            </header>
+      {/* Topbar */}
+      <div className="nb-topbar">
+        <div className="nb-crumb">
+          <button
+            className="nb-icon-btn"
+            onClick={() => setSidebarOpen((o) => !o)}
+            title="Workspaces"
+          >
+            <HamburgerIcon />
+          </button>
+          <span className="nb-crumb-dot" />
+          <span>{activeWorkspace.name.toLowerCase()}</span>
+        </div>
+        <div className="nb-topbar-actions">
+          <button
+            className="nb-icon-btn"
+            title={view === "list" ? "Calendar view" : "List view"}
+            onClick={() => setView((v) => (v === "list" ? "calendar" : "list"))}
+          >
+            {view === "list" ? (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
 
-            <div className="min-h-screen">
-              <Tabs.Panel id="list">
+      {/* Main content */}
+      <TaskProvider key={activeId} repo={repo} workspaceId={activeId}>
+        {view === "calendar" ? (
+          <div style={{ padding: "72px 24px 96px", minHeight: "100vh" }}>
+            <CalendarMonth />
+          </div>
+        ) : (
+          <div className="nb-stage">
+            <div className="notebook">
+              <div className="nb-binding" />
+              <div className="nb-binding-holes">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <span key={i} className="nb-hole" />
+                ))}
+              </div>
+              <div className="nb-page">
+                <div className="nb-margin-line" />
                 <TodoList workspaceId={activeId} />
-              </Tabs.Panel>
-              <Tabs.Panel id="calendar">
-                <CalendarMonth />
-              </Tabs.Panel>
+              </div>
             </div>
-          </Tabs>
-        </TaskProvider>
-      </main>
-    </div>
+          </div>
+        )}
+      </TaskProvider>
+    </>
   );
 }
