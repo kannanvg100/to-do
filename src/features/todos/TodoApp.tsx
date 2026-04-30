@@ -119,7 +119,7 @@ export function TodoApp() {
           width: 224,
           background: "white",
           borderRight: "1px solid #E5E7EB",
-          padding: 8,
+          padding: "56px 8px 8px",
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 200ms",
         }}

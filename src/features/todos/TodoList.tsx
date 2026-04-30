@@ -79,10 +79,13 @@ function DragOverlayRow({ task, isLater }: { task: Task; isLater: boolean }) {
       }}
     >
       <span className="nb-grip-wrapper" style={{ opacity: 1 }}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" width="24" height="24">
-          <path d="M2.5 4.3 C5 3.8, 9 4.6, 13.5 4.1" />
-          <path d="M2.5 8.1 C4 7.6, 9.5 8.5, 13.5 7.9" />
-          <path d="M2.5 11.8 C5.5 12.3, 9 11.5, 13.5 12.0" />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 6C17.9 6 17 6.9 17 8C17 9.1 17.9 10 19 10C20.1 10 21 9.1 21 8C21 6.9 20.1 6 19 6Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M12 6C10.9 6 10 6.9 10 8C10 9.1 10.9 10 12 10C13.1 10 14 9.1 14 8C14 6.9 13.1 6 12 6Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M5 6C3.9 6 3 6.9 3 8C3 9.1 3.9 10 5 10C6.1 10 7 9.1 7 8C7 6.9 6.1 6 5 6Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M19 14C17.9 14 17 14.9 17 16C17 17.1 17.9 18 19 18C20.1 18 21 17.1 21 16C21 14.9 20.1 14 19 14Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M12 14C10.9 14 10 14.9 10 16C10 17.1 10.9 18 12 18C13.1 18 14 17.1 14 16C14 14.9 13.1 14 12 14Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M5 14C3.9 14 3 14.9 3 16C3 17.1 3.9 18 5 18C6.1 18 7 17.1 7 16C7 14.9 6.1 14 5 14Z" stroke="#aaa" strokeWidth="1.5" />
         </svg>
       </span>
       <button type="button" className="nb-check" disabled />
@@ -156,32 +159,32 @@ function SortableRow({
         >
           <path
             d="M19 6C17.9 6 17 6.9 17 8C17 9.1 17.9 10 19 10C20.1 10 21 9.1 21 8C21 6.9 20.1 6 19 6Z"
-            stroke="#2a7273"
+            stroke="#aaa"
             stroke-width="1.5"
           />
           <path
             d="M12 6C10.9 6 10 6.9 10 8C10 9.1 10.9 10 12 10C13.1 10 14 9.1 14 8C14 6.9 13.1 6 12 6Z"
-            stroke="#2a7273"
+            stroke="#aaa"
             stroke-width="1.5"
           />
           <path
             d="M5 6C3.9 6 3 6.9 3 8C3 9.1 3.9 10 5 10C6.1 10 7 9.1 7 8C7 6.9 6.1 6 5 6Z"
-            stroke="#2a7273"
+            stroke="#aaa"
             stroke-width="1.5"
           />
           <path
             d="M19 14C17.9 14 17 14.9 17 16C17 17.1 17.9 18 19 18C20.1 18 21 17.1 21 16C21 14.9 20.1 14 19 14Z"
-            stroke="#2a7273"
+            stroke="#aaa"
             stroke-width="1.5"
           />
           <path
             d="M12 14C10.9 14 10 14.9 10 16C10 17.1 10.9 18 12 18C13.1 18 14 17.1 14 16C14 14.9 13.1 14 12 14Z"
-            stroke="#2a7273"
+            stroke="#aaa"
             stroke-width="1.5"
           />
           <path
             d="M5 14C3.9 14 3 14.9 3 16C3 17.1 3.9 18 5 18C6.1 18 7 17.1 7 16C7 14.9 6.1 14 5 14Z"
-            stroke="#2a7273"
+            stroke="#aaa"
             stroke-width="1.5"
           />
         </svg>
@@ -216,51 +219,40 @@ function SortableRow({
         )}
       </div>
 
-      <div className="nb-trail">
-        {/* {isNext && <span className="nb-next-pill">← next</span>} */}
-        {isPending ? (
-          <SpinnerIcon
-            className="animate-spin"
-            style={{
-              width: 16,
-              height: 16,
-              color: "var(--ink-faint)",
-              flexShrink: 0,
-            }}
-            aria-hidden="true"
-          />
-        ) : (
-          <>
-            <button
-              type="button"
-              className="nb-row-action"
-              onClick={() => {
-                setDraft(task.title);
-                setEditing(true);
-              }}
-              aria-label="Edit task"
-            >
-              <PencilIcon />
-            </button>
-            <button
-              type="button"
-              className="nb-today-pill"
-              onClick={onMoveLater}
-              aria-label="Move to later"
-            >
-              → later
-            </button>
-            <button
-              type="button"
-              className="nb-row-action nb-row-action--danger"
-              onClick={onDelete}
-              aria-label="Delete task"
-            >
-              <TrashIcon />
-            </button>
-          </>
-        )}
-      </div>
+      {isPending ? (
+        <SpinnerIcon
+          className="animate-spin"
+          style={{ width: 16, height: 16, color: "var(--ink-faint)", flexShrink: 0 }}
+          aria-hidden="true"
+        />
+      ) : (
+        <div className="nb-trail">
+          <button
+            type="button"
+            className="nb-row-action"
+            onClick={() => { setDraft(task.title); setEditing(true); }}
+            aria-label="Edit task"
+          >
+            <PencilIcon />
+          </button>
+          <button
+            type="button"
+            className="nb-today-pill"
+            onClick={onMoveLater}
+            aria-label="Move to later"
+          >
+            → later
+          </button>
+          <button
+            type="button"
+            className="nb-row-action nb-row-action--danger"
+            onClick={onDelete}
+            aria-label="Delete task"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -290,10 +282,13 @@ function SortableLaterRow({
   return (
     <div ref={setNodeRef} style={style} className="nb-row nb-row--muted">
       <span className="nb-grip-wrapper" {...attributes} {...listeners}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" width="24" height="24">
-          <path d="M2.5 4.3 C5 3.8, 9 4.6, 13.5 4.1" />
-          <path d="M2.5 8.1 C4 7.6, 9.5 8.5, 13.5 7.9" />
-          <path d="M2.5 11.8 C5.5 12.3, 9 11.5, 13.5 12.0" />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 6C17.9 6 17 6.9 17 8C17 9.1 17.9 10 19 10C20.1 10 21 9.1 21 8C21 6.9 20.1 6 19 6Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M12 6C10.9 6 10 6.9 10 8C10 9.1 10.9 10 12 10C13.1 10 14 9.1 14 8C14 6.9 13.1 6 12 6Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M5 6C3.9 6 3 6.9 3 8C3 9.1 3.9 10 5 10C6.1 10 7 9.1 7 8C7 6.9 6.1 6 5 6Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M19 14C17.9 14 17 14.9 17 16C17 17.1 17.9 18 19 18C20.1 18 21 17.1 21 16C21 14.9 20.1 14 19 14Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M12 14C10.9 14 10 14.9 10 16C10 17.1 10.9 18 12 18C13.1 18 14 17.1 14 16C14 14.9 13.1 14 12 14Z" stroke="#aaa" strokeWidth="1.5" />
+          <path d="M5 14C3.9 14 3 14.9 3 16C3 17.1 3.9 18 5 18C6.1 18 7 17.1 7 16C7 14.9 6.1 14 5 14Z" stroke="#aaa" strokeWidth="1.5" />
         </svg>
       </span>
       <button
@@ -306,34 +301,32 @@ function SortableLaterRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="nb-text">{task.title}</div>
       </div>
-      <div className="nb-trail">
-        {isPending ? (
-          <SpinnerIcon
-            className="animate-spin"
-            style={{ width: 16, height: 16, color: "var(--ink-faint)", flexShrink: 0 }}
-            aria-hidden="true"
-          />
-        ) : (
-          <>
-            <button
-              type="button"
-              className="nb-today-pill"
-              onClick={onMoveToToday}
-              aria-label="Move to today"
-            >
-              ↑ today
-            </button>
-            <button
-              type="button"
-              className="nb-row-action nb-row-action--danger"
-              onClick={onDelete}
-              aria-label="Delete task"
-            >
-              <TrashIcon />
-            </button>
-          </>
-        )}
-      </div>
+      {isPending ? (
+        <SpinnerIcon
+          className="animate-spin"
+          style={{ width: 16, height: 16, color: "var(--ink-faint)", flexShrink: 0 }}
+          aria-hidden="true"
+        />
+      ) : (
+        <div className="nb-trail">
+          <button
+            type="button"
+            className="nb-today-pill"
+            onClick={onMoveToToday}
+            aria-label="Move to today"
+          >
+            ↑ today
+          </button>
+          <button
+            type="button"
+            className="nb-row-action nb-row-action--danger"
+            onClick={onDelete}
+            aria-label="Delete task"
+          >
+            <TrashIcon />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -367,19 +360,14 @@ function DoneRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div className="nb-text">{task.title}</div>
       </div>
-      <div className="nb-trail">
-        {isPending ? (
-          <SpinnerIcon
-            className="animate-spin"
-            style={{
-              width: 16,
-              height: 16,
-              color: "var(--ink-faint)",
-              flexShrink: 0,
-            }}
-            aria-hidden="true"
-          />
-        ) : (
+      {isPending ? (
+        <SpinnerIcon
+          className="animate-spin"
+          style={{ width: 16, height: 16, color: "var(--ink-faint)", flexShrink: 0 }}
+          aria-hidden="true"
+        />
+      ) : (
+        <div className="nb-trail">
           <button
             type="button"
             className="nb-row-action nb-row-action--danger"
@@ -388,8 +376,8 @@ function DoneRow({
           >
             <TrashIcon />
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
