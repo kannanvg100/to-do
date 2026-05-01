@@ -374,7 +374,7 @@ const MONTH_NAMES = [
   "December",
 ];
 
-export function TodoList({ workspaceId }: { workspaceId: string }) {
+export function TodoList({ workspaceId: _workspaceId }: { workspaceId: string }) {
   const { tasks, createTask, updateTask, deleteTask, reorderTasks } = useTasks();
   const [title, setTitle] = useState("");
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
