@@ -5,14 +5,22 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#fafafa",
-  "theme_color": "#863bff",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#FBF5E5",
+  "theme_color": "#C8921A",
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

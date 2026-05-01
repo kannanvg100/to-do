@@ -1,4 +1,4 @@
-# Hero v3 POC
+# TO-DO
 
 A task management app with multiple workspaces, calendar view, and Supabase persistence.
 
