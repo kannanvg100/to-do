@@ -16,6 +16,8 @@ export type Task = {
   recurrence: TaskRecurrence | null;
   createdAt: string;
   updatedAt: string;
+  sortOrder: number | null;
+  isLater: boolean;
 };
 
 export type CreateTaskInput = {
@@ -25,5 +27,5 @@ export type CreateTaskInput = {
 };
 
 export type UpdateTaskInput = Partial<
-  Pick<Task, "title" | "completed" | "dueDate" | "recurrence">
+  Pick<Task, "title" | "completed" | "dueDate" | "recurrence" | "isLater" | "sortOrder">
 >;

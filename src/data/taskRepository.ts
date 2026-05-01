@@ -5,6 +5,7 @@ export type TaskRepository = {
   create(input: CreateTaskInput): Promise<Task>;
   update(id: string, patch: UpdateTaskInput): Promise<Task>;
   delete(id: string): Promise<void>;
+  reorder(updates: { id: string; sortOrder: number }[]): Promise<void>;
 };
 
 function nowIso(): string {
@@ -65,6 +66,8 @@ export function createLocalStorageTaskRepository(workspaceId: string): TaskRepos
         recurrence: input.recurrence ?? null,
         createdAt: t,
         updatedAt: t,
+        sortOrder: null,
+        isLater: false,
       };
       tasks.push(task);
       writeAll(workspaceId, tasks);
@@ -89,6 +92,15 @@ export function createLocalStorageTaskRepository(workspaceId: string): TaskRepos
 
     async delete(id: string) {
       const tasks = readAll(workspaceId).filter((x) => x.id !== id);
+      writeAll(workspaceId, tasks);
+    },
+
+    async reorder(updates: { id: string; sortOrder: number }[]) {
+      const tasks = readAll(workspaceId);
+      for (const { id, sortOrder } of updates) {
+        const i = tasks.findIndex((x) => x.id === id);
+        if (i >= 0) tasks[i] = { ...tasks[i]!, sortOrder };
+      }
       writeAll(workspaceId, tasks);
     },
   };

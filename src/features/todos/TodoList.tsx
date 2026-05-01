@@ -22,40 +22,6 @@ import { useTasks } from "./useTasks";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function orderKey(workspaceId: string) {
-  return `hero-todos:order:${workspaceId}`;
-}
-function loadOrder(workspaceId: string): string[] {
-  try {
-    const raw = localStorage.getItem(orderKey(workspaceId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-function saveOrder(workspaceId: string, ids: string[]) {
-  localStorage.setItem(orderKey(workspaceId), JSON.stringify(ids));
-}
-
-function laterKey(workspaceId: string) {
-  return `hero-todos:later:${workspaceId}`;
-}
-function loadLaterIds(workspaceId: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(laterKey(workspaceId));
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? new Set(parsed as string[]) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-function saveLaterIds(workspaceId: string, ids: Set<string>) {
-  localStorage.setItem(laterKey(workspaceId), JSON.stringify([...ids]));
-}
-
 function getWeekNumber(d: Date): number {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = date.getUTCDay() || 7;
@@ -409,14 +375,12 @@ const MONTH_NAMES = [
 ];
 
 export function TodoList({ workspaceId }: { workspaceId: string }) {
-  const { tasks, createTask, updateTask, deleteTask } = useTasks();
+  const { tasks, createTask, updateTask, deleteTask, reorderTasks } = useTasks();
   const [title, setTitle] = useState("");
-  const [orderedIds, setOrderedIds] = useState<string[]>(() =>
-    loadOrder(workspaceId),
-  );
+  const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [completedOpen, setCompletedOpen] = useState(false);
   const [laterOpen, setLaterOpen] = useState(true);
-  const [laterIds, setLaterIds] = useState<Set<string>>(() => loadLaterIds(workspaceId));
+  const [laterIds, setLaterIds] = useState<Set<string>>(new Set());
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [pendingTaskIds, setPendingTaskIds] = useState<string[]>([]);
@@ -426,6 +390,7 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
   } | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
+  const initialized = useRef(false);
 
   // Date header
   const now = new Date();
@@ -438,6 +403,14 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
 
   const taskMap = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 
+  // Initialize order and laterIds from server on first non-empty load
+  useEffect(() => {
+    if (initialized.current || tasks.length === 0) return;
+    initialized.current = true;
+    setOrderedIds(tasks.map((t) => t.id));
+    setLaterIds(new Set(tasks.filter((t) => t.isLater && !t.completed).map((t) => t.id)));
+  }, [tasks]);
+
   const normalizedOrderedIds = useMemo(() => {
     const incomingIds = tasks.map((t) => t.id);
     const existingIds = new Set(orderedIds);
@@ -445,23 +418,6 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
     const retainedIds = orderedIds.filter((id) => taskMap.has(id));
     return [...addedIds, ...retainedIds];
   }, [orderedIds, taskMap, tasks]);
-
-  useEffect(() => {
-    saveOrder(workspaceId, normalizedOrderedIds);
-  }, [normalizedOrderedIds, workspaceId]);
-
-  useEffect(() => {
-    saveLaterIds(workspaceId, laterIds);
-  }, [laterIds, workspaceId]);
-
-  // Remove stale IDs when tasks are deleted (skip while tasks are still loading)
-  useEffect(() => {
-    if (taskMap.size === 0) return;
-    setLaterIds((prev) => {
-      const next = new Set([...prev].filter((id) => taskMap.has(id)));
-      return next.size !== prev.size ? next : prev;
-    });
-  }, [taskMap]);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -495,7 +451,7 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
     const activeIsLater = activeContainer === "later";
     const overIsLater = overContainer === "later";
 
-    // Cross-section: flip membership then stop (no reorder needed)
+    // Cross-section: flip section optimistically + persist to DB
     if (activeIsLater !== overIsLater) {
       setLaterIds((prev) => {
         const next = new Set(prev);
@@ -503,22 +459,27 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
         else next.add(activeId);
         return next;
       });
+      void withPendingTask(activeId, () =>
+        updateTask(activeId, { isLater: !activeIsLater })
+      );
       return;
     }
 
-    // Reorder within the flat active list
-    const actIds = normalizedOrderedIds.filter((id) => {
-      const t = taskMap.get(id);
-      return t ? !t.completed : false;
-    });
-    const completedIds = normalizedOrderedIds.filter((id) => {
-      const t = taskMap.get(id);
-      return t ? t.completed : false;
-    });
-    const oldIndex = actIds.indexOf(activeId);
-    const newIndex = actIds.indexOf(overId);
+    // Same-section reorder: optimistic UI + persist sort_order to DB
+    const sectionTasks = activeIsLater ? laterTasks : todayTasks;
+    const oldIndex = sectionTasks.findIndex((t) => t.id === activeId);
+    const newIndex = sectionTasks.findIndex((t) => t.id === overId);
     if (oldIndex < 0 || newIndex < 0) return;
-    setOrderedIds([...arrayMove(actIds, oldIndex, newIndex), ...completedIds]);
+
+    const reordered = arrayMove([...sectionTasks], oldIndex, newIndex);
+    const updates = reordered.map((t, idx) => ({ id: t.id, sortOrder: idx * 1000 }));
+
+    // Optimistic local reorder
+    const actIds = normalizedOrderedIds.filter((id) => !taskMap.get(id)?.completed);
+    const completedIds = normalizedOrderedIds.filter((id) => taskMap.get(id)?.completed);
+    setOrderedIds([...arrayMove(actIds, actIds.indexOf(activeId), actIds.indexOf(overId)), ...completedIds]);
+
+    void reorderTasks(updates);
   };
 
   const handleAddKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -669,9 +630,10 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
                   onRename={(t) =>
                     withPendingTask(task.id, () => updateTask(task.id, { title: t }))
                   }
-                  onMoveLater={() =>
-                    setLaterIds((prev) => new Set([...prev, task.id]))
-                  }
+                  onMoveLater={() => {
+                    setLaterIds((prev) => new Set([...prev, task.id]));
+                    void withPendingTask(task.id, () => updateTask(task.id, { isLater: true }));
+                  }}
                   isPending={pendingTaskIds.includes(task.id)}
                 />
               ))}
@@ -699,13 +661,14 @@ export function TodoList({ workspaceId }: { workspaceId: string }) {
                       <SortableLaterRow
                         key={task.id}
                         task={task}
-                        onMoveToToday={() =>
+                        onMoveToToday={() => {
                           setLaterIds((prev) => {
                             const next = new Set(prev);
                             next.delete(task.id);
                             return next;
-                          })
-                        }
+                          });
+                          void withPendingTask(task.id, () => updateTask(task.id, { isLater: false }));
+                        }}
                         onDelete={() =>
                           void withPendingTask(task.id, () => deleteTask(task.id))
                         }

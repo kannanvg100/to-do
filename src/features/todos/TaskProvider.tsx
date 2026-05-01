@@ -55,9 +55,17 @@ export function TaskProvider({
     [repo, refresh]
   );
 
+  const reorderTasks = useCallback(
+    async (updates: { id: string; sortOrder: number }[]) => {
+      await repo.reorder(updates);
+      await refresh();
+    },
+    [repo, refresh]
+  );
+
   const value = useMemo(
-    () => ({ tasks, refresh, createTask, updateTask, deleteTask }),
-    [tasks, refresh, createTask, updateTask, deleteTask]
+    () => ({ tasks, refresh, createTask, updateTask, deleteTask, reorderTasks }),
+    [tasks, refresh, createTask, updateTask, deleteTask, reorderTasks]
   );
 
   return (

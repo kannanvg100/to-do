@@ -7,6 +7,7 @@ export type TasksContextValue = {
   createTask: (input: CreateTaskInput) => Promise<void>;
   updateTask: (id: string, patch: UpdateTaskInput) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  reorderTasks: (updates: { id: string; sortOrder: number }[]) => Promise<void>;
 };
 
 export const TasksContext = createContext<TasksContextValue | null>(null);
